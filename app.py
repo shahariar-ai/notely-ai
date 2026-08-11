@@ -405,5 +405,5 @@ with st.expander("🖥️ Recording a Zoom / Google Meet / online class? Downloa
         "after — then upload the file here."
     )
     st.markdown(
-        "[⬇️ Download Notely Recorder for Windows](https://github.com/shahariar-ai/notely-recorder/releases/download/v1.0.0/NotelyRecorder.exe)"
+        "[⬇️ Download Notely Recorder for Windows](https://github.com/shahariar-ai/notely-recorder/releases/download/v1.1.0/NotelyRecorder.exe)"
     )
