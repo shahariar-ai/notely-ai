@@ -414,22 +414,30 @@ with tab6:
         with st.chat_message("assistant"):
             st.write(answer)
 
-with tab7:
-    st.subheader("📅 Upcoming Calendar Events")
-    if st.button("Connect / Refresh Google Calendar"):
-        try:
-            with st.spinner("Connecting to Google Calendar... (a browser login may open)"):
-                st.session_state.calendar_events = get_upcoming_events()
-        except Exception as e:
-            st.error(f"Calendar connect failed: {e}")
+# Google Calendar needs a web OAuth flow (run_local_server only works on a local machine).
+# Flip to True only once that is implemented; the original code is kept below.
+CALENDAR_ENABLED = False
 
-    if "calendar_events" in st.session_state:
-        for ev in st.session_state.calendar_events:
-            with st.container(border=True):
-                st.markdown(f"**{ev['title']}**")
-                st.caption(ev["start"])
-                if ev["meeting_link"]:
-                    st.markdown(f"[Join Meeting]({ev['meeting_link']})")
+with tab7:
+    if not CALENDAR_ENABLED:
+        st.subheader("📅 Calendar")
+        st.info("📅 **Coming soon** — Google Calendar integration is on our roadmap.")
+    else:
+        st.subheader("📅 Upcoming Calendar Events")
+        if st.button("Connect / Refresh Google Calendar"):
+            try:
+                with st.spinner("Connecting to Google Calendar... (a browser login may open)"):
+                    st.session_state.calendar_events = get_upcoming_events()
+            except Exception as e:
+                st.error(f"Calendar connect failed: {e}")
+
+        if "calendar_events" in st.session_state:
+            for ev in st.session_state.calendar_events:
+                with st.container(border=True):
+                    st.markdown(f"**{ev['title']}**")
+                    st.caption(ev["start"])
+                    if ev["meeting_link"]:
+                        st.markdown(f"[Join Meeting]({ev['meeting_link']})")
 
 # ---------- Desktop Recorder download ----------
 st.markdown("---")
