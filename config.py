@@ -5,7 +5,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_secret(key):
-    return os.getenv(key) or st.secrets.get(key, "")
+    value = os.getenv(key)
+    if value:
+        return value
+    try:
+        return st.secrets.get(key, "")
+    except Exception:  # no secrets file (e.g. local run)
+        return ""
 
 GEMINI_API_KEY = get_secret("GEMINI_API_KEY")
 SUPABASE_URL = get_secret("SUPABASE_URL")

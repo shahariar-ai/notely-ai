@@ -13,6 +13,7 @@ from services.exporter import export_txt, export_docx, export_pdf
 from services.storage import save_meeting, get_all_meetings, search_meetings
 from services.auth import sign_up, sign_in, sign_out
 from services.chat_with_meetings import chat_with_meetings
+from services.usage import check_and_consume
 from services.collaboration import share_meeting, unshare_meeting, get_shared_with_me
 from services.calendar_service import get_upcoming_events
 from utils.audio_utils import save_uploaded_file, save_recorded_audio, upload_audio_to_cloud
@@ -192,6 +193,14 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
     ]
 )
 
+def allowed(kind: str) -> bool:
+    """Charge one unit against the user's daily cap; show an error if exhausted."""
+    ok, msg = check_and_consume(user_id, kind)
+    if not ok:
+        st.error(msg)
+    return ok
+
+
 for key, default in [("last_transcript", None), ("last_summary", None), ("last_title", "")]:
     if key not in st.session_state:
         st.session_state[key] = default
@@ -210,7 +219,7 @@ with tab1:
         audio_path = save_recorded_audio(audio["bytes"], f"{title.replace(' ', '_')}.wav")
         st.audio(audio["bytes"])
 
-    if audio_path and st.button("🚀 Transcribe & Summarize"):
+    if audio_path and st.button("🚀 Transcribe & Summarize") and allowed("transcribe"):
         with st.spinner("Transcribing with Gemini..."):
             transcript = transcribe_audio(audio_path)
         with st.spinner("Generating summary..."):
@@ -279,7 +288,7 @@ with tab2:
     if not st.session_state.last_transcript:
         st.info("Transcribe a lecture in the 'New Recording' tab first.")
     else:
-        if st.button("Generate Study Pack"):
+        if st.button("Generate Study Pack") and allowed("ai"):
             with st.spinner("Generating notes, flashcards & MCQs..."):
                 st.session_state.last_study = generate_study_pack(st.session_state.last_transcript)
         if "last_study" in st.session_state:
@@ -308,7 +317,7 @@ with tab3:
     if not st.session_state.last_transcript:
         st.info("Transcribe a meeting in the 'New Recording' tab first.")
     else:
-        if st.button("Generate Business Pack"):
+        if st.button("Generate Business Pack") and allowed("ai"):
             with st.spinner("Generating MoM, report & action plan..."):
                 st.session_state.last_business = generate_business_pack(st.session_state.last_transcript)
         if "last_business" in st.session_state:
@@ -333,7 +342,7 @@ with tab4:
             "Target language",
             ["Bengali", "English", "Spanish", "French", "German", "Arabic", "Hindi", "Chinese", "Japanese"],
         )
-        if st.button("Translate Summary"):
+        if st.button("Translate Summary") and allowed("ai"):
             with st.spinner("Translating..."):
                 translated = translate_text(
                     st.session_state.last_summary.get("executive_summary", ""), lang
@@ -346,7 +355,12 @@ with tab5:
     with sub1:
         query = st.text_input("🔍 Search meetings (natural language)")
         all_meetings = get_all_meetings(user_id)
-        meetings = ai_search(query, all_meetings) if query else all_meetings
+        meetings = all_meetings
+        if query:
+            # charge once per distinct query, not on every rerun
+            if st.session_state.get("charged_query") == query or allowed("ai"):
+                st.session_state.charged_query = query
+                meetings = ai_search(query, all_meetings)
 
         for m in meetings:
             with st.expander(f"{m['title']} — {m['created_at'][:16]}"):
@@ -387,7 +401,7 @@ with tab6:
             st.write(msg["content"])
 
     question = st.chat_input("e.g. What decisions came out of last week's budget meeting?")
-    if question:
+    if question and allowed("ai"):
         st.session_state.chat_history.append({"role": "user", "content": question})
         with st.chat_message("user"):
             st.write(question)
