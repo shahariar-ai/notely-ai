@@ -2,7 +2,7 @@ import os
 import streamlit as st
 from streamlit_mic_recorder import mic_recorder
 
-from config import AUDIO_DIR, EXPORT_DIR
+from config import AUDIO_DIR
 from services.transcription import transcribe_audio
 from services.summarizer import summarize_transcript
 from services.study_mode import generate_study_pack
@@ -18,7 +18,6 @@ from services.calendar_service import get_upcoming_events
 from utils.audio_utils import save_uploaded_file, save_recorded_audio, upload_audio_to_cloud
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
-os.makedirs(EXPORT_DIR, exist_ok=True)
 
 st.set_page_config(page_title="Notely AI", page_icon="🎙️", layout="wide")
 
@@ -226,9 +225,18 @@ with tab1:
         st.session_state.last_transcript = transcript
         st.session_state.last_summary = summary
         st.session_state.last_title = title
+        # invalidate cached exports and packs from a previous recording
+        for k in ("exports", "last_study", "last_business"):
+            st.session_state.pop(k, None)
 
         save_meeting(user_id, title, transcript, summary, None, audio_url)
         st.success("Done! Saved to cloud.")
+
+    # Results live in session_state so they survive reruns (e.g. clicking a download button)
+    if st.session_state.last_summary:
+        r_title = st.session_state.last_title
+        r_transcript = st.session_state.last_transcript
+        summary = st.session_state.last_summary
 
         st.subheader("Executive Summary")
         st.write(summary.get("executive_summary", ""))
@@ -239,18 +247,32 @@ with tab1:
         for item in summary.get("action_items", []):
             st.markdown(f"- **{item.get('task')}** — Owner: {item.get('owner')}")
         with st.expander("Full Transcript"):
-            st.write(transcript)
+            st.write(r_transcript)
+
+        if "exports" not in st.session_state:
+            exports = {"txt": export_txt(r_title, r_transcript, summary),
+                       "docx": export_docx(r_title, r_transcript, summary)}
+            try:
+                exports["pdf"] = export_pdf(r_title, r_transcript, summary)
+            except Exception as e:
+                exports["pdf"] = None
+                st.warning(f"PDF export unavailable: {e}")
+            st.session_state.exports = exports
+        exports = st.session_state.exports
+        fname = (r_title or "notely").replace(" ", "_")
 
         col1, col2, col3 = st.columns(3)
         with col1:
-            if st.button("Export as TXT"):
-                st.success(f"Saved: {export_txt(title, transcript, summary)}")
+            st.download_button("⬇️ Download TXT", exports["txt"], file_name=f"{fname}.txt",
+                               mime="text/plain", key="dl_txt")
         with col2:
-            if st.button("Export as DOCX"):
-                st.success(f"Saved: {export_docx(title, transcript, summary)}")
+            st.download_button("⬇️ Download DOCX", exports["docx"], file_name=f"{fname}.docx",
+                               mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                               key="dl_docx")
         with col3:
-            if st.button("Export as PDF"):
-                st.success(f"Saved: {export_pdf(title, transcript, summary)}")
+            if exports["pdf"]:
+                st.download_button("⬇️ Download PDF", exports["pdf"], file_name=f"{fname}.pdf",
+                                   mime="application/pdf", key="dl_pdf")
 
 with tab2:
     st.subheader("Study Mode")
