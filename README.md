@@ -18,7 +18,6 @@ transcript, a summary with action items, study material, and exports you can dow
 - **Export** to TXT, DOCX and PDF (the PDF supports Bengali text).
 - **Desktop Recorder** (Windows): records your mic and system audio for Zoom / Meet / online classes.
   See [notely-recorder](https://github.com/shahariar-ai/notely-recorder).
-- Installable as a PWA.
 - Free with daily limits (default 5 transcriptions and 40 other AI actions per user per day).
 
 ## Roadmap (not built yet)
