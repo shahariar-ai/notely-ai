@@ -16,6 +16,7 @@ from services.chat_with_meetings import chat_with_meetings
 from services.usage import check_and_consume
 from services.collaboration import share_meeting, unshare_meeting, get_shared_with_me
 from services.calendar_service import get_upcoming_events
+from legal import render_legal
 from utils.audio_utils import save_uploaded_file, save_recorded_audio, upload_audio_to_cloud
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
@@ -130,6 +131,25 @@ st.markdown(
 
 if "user" not in st.session_state:
     st.session_state.user = None
+if "page" not in st.session_state:
+    st.session_state.page = "app"
+
+
+def legal_links():
+    """Sidebar links to the Privacy / Terms pages."""
+    st.sidebar.markdown("---")
+    if st.sidebar.button("🔒 Privacy Policy", key="nav_privacy"):
+        st.session_state.page = "privacy"
+        st.rerun()
+    if st.sidebar.button("📄 Terms of Service", key="nav_terms"):
+        st.session_state.page = "terms"
+        st.rerun()
+
+
+legal_links()
+if st.session_state.page in ("privacy", "terms"):
+    render_legal(st.session_state.page, st.session_state.user.id if st.session_state.user else None)
+    st.stop()
 
 # ---------- LOGIN GATE ----------
 if st.session_state.user is None:
